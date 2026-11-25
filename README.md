@@ -2,27 +2,69 @@
 
 API REST empresarial y motor de operaciones FTTH para **Orion Link**, un Sistema CRM de Soporte Técnico y Operaciones ISP que centraliza la atención al cliente suscriptor, el diagnóstico óptico remoto (`OLT → Caja NAP → ONU`), la detección temprana de fallas masivas en red de fibra óptica y el despacho de cuadrillas técnicas en campo.
 
-## Objetivo
+---
 
-Proveer una arquitectura backend **100% Orientada a Objetos (OOP)** con herencia, polimorfismo, encapsulamiento e inyección de dependencias sobre **Node.js 20+ (ES Modules)**, **Express 5** y **MySQL 8.0 (`InnoDB`)**, garantizando seguridad en la frontera desde el primer commit, transacciones ACID y reproducibilidad total con **Docker Compose**.
+## ¿Qué es en realidad Orion Link y cómo funciona?
 
-## Funcionalidades Principales
+En un proveedor de internet por fibra óptica hasta el hogar (**FTTH / GPON**), el mayor problema operativo ocurre cuando múltiples clientes llaman por falta de servicio y el centro de soporte no distingue entre una falla individual (el router ONU de una casa desconectado o un patchcord doblado) y una **caída masiva de planta externa** (un camión cortó el cable troncal o una Caja NAP en un poste sufrió vandalismo).
 
-- **Autenticación Dual JWT + Cookies `HttpOnly` y RBAC de 4 Roles:** Emisión simultánea de cookie segura (`orion_access_token`) y token Bearer para los roles `admin` (NOC), `support_agent` (Soporte N1/N2), `field_tech` (Técnico de Cuadrilla) y `customer` (Cliente Suscriptor).
-- **Jerarquía Polimórfica de Errores y Capas Base OOP:**
-  - `AppError extends Error` con subclases polimórficas (`ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `DatabaseError`).
-  - Clases base abstractas: `BaseRepository`, `BaseService`, `BaseController`, `BaseDTO` y `BaseValidator`.
-- **Topología FTTH y Contratos:** Gestión de nodos OLT, Cajas NAP con control automático de puertos splitter por triggers, terminales ONUs, planes simétricos y contratos de suscriptores.
-- **Motor de Diagnóstico Remoto y Correlación de Fallas Masivas (`sp_run_remote_diagnostic`):** Evalúa potencia óptica (`rx_power_dbm`, `tx_power_dbm`), latencia y pérdida de paquetes; si una Caja NAP alcanza `>= 3` ONUs en pérdida de señal (`los`), declara o actualiza automáticamente una falla masiva en `mass_outages` y agrupa los tickets abiertos de esa NAP.
-- **Despacho y Cierre Certificado de Cuadrillas (`sp_complete_dispatch_order`):** Las órdenes de trabajo en campo exigen lectura óptica restaurada (`-14.00` a `-25.00 dBm`), restaurando en una sola transacción InnoDB la ONU, la Caja NAP, el ticket y la disponibilidad de la cuadrilla.
+**Orion Link** resuelve esa brecha unificando en un solo motor transaccional:
+
+1. **Jerarquía Física Real de Red GPON (`OLT → Caja NAP → ONU → Contrato`):**
+   - **OLT (`olts`):** Cabecera óptica en el nodo central del ISP que ilumina las fibras troncales.
+   - **Caja NAP (`nap_boxes`):** Caja de distribución instalada en poste o cámara subterránea con un splitter óptico (`1:8` o `1:16`). Un trigger InnoDB (`trg_onu_after_insert_nap_ports`) controla automáticamente cuántos puertos quedan libres u ocupados.
+   - **Terminal ONU (`onus`):** El módem/router óptico dentro de la casa o empresa del cliente conectado a un puerto específico de su Caja NAP.
+   - **Contrato de Suscriptor (`service_contracts`):** Vincula al cliente (`customer`) con un plan simétrico (`service_plans`) y su ONU física.
+
+2. **Diagnóstico Óptico Remoto Determinístico (`sp_run_remote_diagnostic`):**
+   - Cada vez que un cliente o un agente ejecuta un diagnóstico remoto, el motor mide la potencia óptica recibida (`rx_power_dbm`), potencia transmitida (`tx_power_dbm`), latencia y pérdida de paquetes:
+     - **`-14.00 dBm` a `-25.00 dBm` (`online` / Óptimo):** Señal láser saludable; servicio operando al 100%.
+     - **`-25.01 dBm` a `-27.99 dBm` (`high_attenuation` / Atenuación Alta):** Microcurvatura en fibra drop o conector sucio; degradación preventiva.
+     - **`<= -28.00 dBm` o `-40.00 dBm` (`los` / Loss of Signal):** Pérdida total de luz óptica; corte físico de fibra.
+
+3. **Correlación Automática de Fallas Masivas (`mass_outages`):**
+   - Dentro del procedimiento almacenado `sp_run_remote_diagnostic`, cada vez que una ONU cae en estado `los`, MySQL cuenta cuántas ONUs hermanas conectadas a esa **misma Caja NAP** están también en `los`.
+   - Si **`>= 3` ONUs de la misma Caja NAP** están sin luz (`los`), Orion Link **declara automáticamente una Falla Masiva (`mass_outages`)**, marca la Caja NAP como `degraded` o `outage` y agrupa los tickets abiertos de ese sector para no enviar 8 técnicos distintos al mismo poste.
+
+4. **Despacho de Cuadrillas y Cierre con Certificación Óptica (`sp_complete_dispatch_order`):**
+   - Cuando la mesa de ayuda o el NOC despacha una cuadrilla (`field_tech`) al sitio (`dispatch_orders`), el sistema **prohíbe cerrar la orden con un simple clic**.
+   - El técnico de campo está obligado a ingresar la lectura de su medidor de potencia óptica tras fusionar o reparar la fibra (`final_rx_power_dbm` entre **`-14.00` y `-25.00 dBm`**) y los metros de cable drop utilizados. En una sola transacción ACID, MySQL certifica la ONU en `online`, restaura la Caja NAP a `operational`, cierra el ticket y libera la cuadrilla.
+
+---
+
+## Función y Operación de Cada Rol en el Sistema (RBAC de 4 Roles)
+
+Orion Link separa estrictamente tanto los permisos de endpoints en el backend como la experiencia de consola polimórfica en el frontend para sus **4 roles autenticados**:
+
+| Rol (`users.role`) | Nombre Operativo | Función Real en el ISP | Capacidades y Permisos en `orion-link-backend` |
+|---|---|---|---|
+| **`admin`** | **Administrador NOC / Planta Externa** | Supervisa la salud global de la red FTTH, administra la infraestructura (`OLT`, `Cajas NAP`, `ONUs`), declara o resuelve cortes masivos de fibra y audita las cuentas RBAC del personal y clientes. | Acceso total: alta de Cajas NAP (`POST /topology/naps`), alta de contratos (`POST /contracts`), declaración manual y resolución de fallas masivas (`POST /outages`, `PUT /outages/:id/resolve`), despacho de cuadrillas y auditoría completa de usuarios (`GET/POST/PUT/DELETE /users`). |
+| **`support_agent`** | **Agente de Soporte Técnico N1 / N2** | Atiende la cola de tickets de clientes, ejecuta pruebas remotas de telemetría GPON sobre cualquier contrato para diagnosticar si el problema es de configuración Wi-Fi (N1) o físico de fibra (N2), y escala a cuadrilla cuando hay atenuación o `LOS`. | Ve todos los contratos y tickets del ISP, ejecuta diagnósticos remotos con inyección de lecturas de prueba (`POST /diagnostics/run`), resuelve tickets N1 remotos (`PUT /tickets/:id/status`), agrega notas técnicas y genera órdenes de despacho (`POST /dispatches`). |
+| **`field_tech`** | **Técnico de Cuadrilla de Campo** | Recibe en su hoja de ruta las órdenes de despacho en calle, se traslada al poste/Caja NAP o domicilio del cliente, repara o fusiona la fibra óptica y certifica la potencia láser final en `dBm`. | Opera el ciclo de vida en campo (`PUT /dispatches/:id/state` → `en_route`, `on_site`) y ejecuta el cierre técnico certificado con medidor óptico (`PUT /dispatches/:id/complete` validando `-14.00` a `-25.00 dBm` y metraje de fibra). |
+| **`customer`** | **Cliente Suscriptor FTTH** | Consulta el estado real de su servicio contratado, verifica si su zona/Caja NAP presenta una falla masiva reportada, ejecuta autodiagnóstico remoto de su router ONU y abre tickets de soporte. | Aislamiento estricto por propiedad: solo ve sus propios contratos (`GET /contracts/me`), solo puede diagnosticar sus propios contratos (`POST /diagnostics/run`) y solo ve o comenta sus propios tickets (`GET/POST /tickets`). |
+
+---
+
+## Seguridad de Sesión, Revocación de JWT y Protección Anti-Caché (`bfcache`)
+
+Para evitar que una sesión cerrada pueda visualizarse al presionar el botón **"Atrás"** del navegador:
+
+1. **Identificador Único de Token (`jti`) y Lista de Revocación en Servidor (`TokenService`):**
+   - Cada JWT emitido incluye un `jti` (`crypto.randomUUID()`).
+   - Al invocar `POST /api/v1/auth/logout`, el backend extrae el token (de la cookie `HttpOnly` `orion_access_token` o del header `Authorization: Bearer`), lo registra inmediatamente en el registro de tokens revocados (`TokenService.revokeToken`) y limpia la cookie `HttpOnly`.
+   - Cualquier petición posterior con ese mismo token es rechazada en `PassportConfig` (`TokenService.isRevoked`) con `401 Unauthorized`, incluso antes de que expire su TTL original.
+2. **Cabeceras HTTP Anti-Almacenamiento en Rutas Autenticadas (`AuthMiddleware`):**
+   - Todo endpoint protegido por `AuthMiddleware.requireAuth()` emite `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, private`, `Pragma: no-cache` y `Expires: 0`, impidiendo que proxies o el navegador almacenen respuestas privadas.
+
+---
 
 ## Tecnologías
 
 | Tecnología | Uso en `orion-link-backend` |
 |---|---|
-| Node.js 20+ (ES Modules) y Express 5 | Servidor HTTP y arquitectura modular por capas OOP. |
+| Node.js 20+ (ES Modules) y Express 5 | Servidor HTTP y arquitectura modular por capas 100% OOP. |
 | MySQL 8.0 (`InnoDB`) y `mysql2/promise` | Persistencia relacional ACID, Connection Pool, Triggers y Stored Procedures. |
-| JWT, Passport JWT, `cookie-parser` y `bcrypt` | Autenticación dual (Cookie `HttpOnly` + Bearer), autorización RBAC y hash de contraseñas. |
+| JWT (`jti` revocable), Passport JWT, `cookie-parser` y `bcrypt` | Autenticación dual (Cookie `HttpOnly` + Bearer), revocación en logout, RBAC y hash de contraseñas. |
 | `express-validator`, `cors` y `express-rate-limit` | Validación declarativa de entradas, lista blanca de orígenes y límite de peticiones. |
 | Docker & Docker Compose | Contenerización orquestada de MySQL 8.0 (con healthcheck) y la API Node.js. |
 | Swagger UI & Bruno (`bruno/`) | Documentación OpenAPI 3.0 en `/api-docs` y colección HTTP reproducible. |
@@ -48,16 +90,16 @@ orion-link-backend/
 │   ├── core/                       # Clases base OOP (BaseRepository, BaseService, BaseController, BaseDTO, BaseValidator)
 │   ├── controllers/                # Controladores HTTP orientados a objetos
 │   ├── dtos/                       # Data Transfer Objects polimórficos
-│   ├── middlewares/                # AuthMiddleware (RBAC), ErrorMiddleware, RateLimit, SecurityHeaders
+│   ├── middlewares/                # AuthMiddleware (RBAC + no-store), ErrorMiddleware, RateLimit, SecurityHeaders
 │   ├── repositories/               # Acceso a datos parametrizado con mysql2/promise
 │   ├── routes/                     # Enrutador principal /api/v1 con inyección de dependencias
-│   ├── services/                   # Lógica de dominio, diagnóstico óptico y correlación NOC
+│   ├── services/                   # Lógica de dominio, TokenService (jti revocable) y correlación NOC
 │   ├── utils/                      # AppError (polimórfico), Logger y OpticalTelemetryClassifier
 │   ├── validators/                 # Esquemas de validación con express-validator
 │   ├── app.js                      # Clase App (Express, CORS, Cookies, Swagger, Rutas)
 │   └── server.js                   # Clase Server (arranque y verificación de pool MySQL)
 ├── tests/
-│   └── orion-oop.test.js           # Suite de pruebas unitarias (AppError, GPON Classifier, DTOs)
+│   └── orion-oop.test.js           # Suite de pruebas unitarias (AppError, GPON Classifier, DTOs, JWT Revocation)
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
@@ -96,7 +138,7 @@ orion-link-backend/
 | Módulo | Método y Ruta | Roles Permitidos | Descripción |
 |---|---|---|---|
 | **Salud** | `GET /health` | Público | Verifica estado de la API y motor MySQL InnoDB. |
-| **Autenticación** | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout`, `GET /auth/me` | Público / JWT | Emite cookie `HttpOnly` `orion_access_token` + token Bearer. |
+| **Autenticación** | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout`, `GET /auth/me` | Público / JWT | Emite y revoca cookie `HttpOnly` `orion_access_token` + token Bearer. |
 | **Usuarios** | `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id` | `admin` (`support_agent` lectura) | Gestión de cuentas y baja lógica sin pérdida de historial. |
 | **Topología FTTH** | `GET /topology/olts`, `GET /topology/naps`, `GET /topology/onus` | Autenticados (`POST` `admin`) | Inventario de OLTs, Cajas NAP con salud óptica y ONUs. |
 | **Planes y Contratos** | `GET /plans`, `GET /contracts`, `GET /contracts/me`, `POST /contracts` | `customer` ve los suyos; staff ve todos | Planes simétricos FTTH y contratos vinculados a ONU y NAP. |
