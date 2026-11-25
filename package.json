@@ -1,0 +1,56 @@
+{
+  "name": "orion-link-backend",
+  "version": "1.0.0",
+  "description": "Sistema CRM de Soporte Técnico y Operaciones ISP (FTTH) — Backend OOP en Node.js ESM, Express 5, MySQL 8.0 InnoDB, JWT + Cookies HttpOnly y Docker Compose",
+  "keywords": [
+    "orion-link",
+    "isp",
+    "crm",
+    "ftth",
+    "gpon",
+    "noc",
+    "nodejs",
+    "express",
+    "mysql",
+    "innodb",
+    "jwt",
+    "oop",
+    "docker"
+  ],
+  "homepage": "https://github.com/Anderson-Oloroso/orion-link-backend#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anderson-Oloroso/orion-link-backend.git"
+  },
+  "license": "ISC",
+  "author": "Henrik Anderson Oloroso García (Anderson-Oloroso)",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon -L src/server.js",
+    "test": "node --test tests/orion-oop.test.js",
+    "verify": "node --check src/server.js && node --check src/app.js && node --test tests/orion-oop.test.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.14.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "semver": "^7.7.1",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
