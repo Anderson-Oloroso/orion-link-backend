@@ -4,9 +4,18 @@ import { UnauthorizedError, ForbiddenError } from '../utils/app-error.js';
 /**
  * Middleware Orientado a Objetos de Autenticación JWT (Cookie HttpOnly + Bearer)
  * y Control de Acceso Basado en Roles (RBAC para los 4 roles de Orion Link).
+ * Incluye cabeceras anti-caché (no-store) para impedir que el navegador sirva
+ * estados autenticados obsoletos al presionar el botón "Atrás" tras cerrar sesión.
  */
 export class AuthMiddleware {
+    static setNoCacheHeaders(res) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+
     static requireAuth(req, res, next) {
+        AuthMiddleware.setNoCacheHeaders(res);
         passport.authenticate('jwt', { session: false }, (err, user) => {
             if (err) {
                 return next(err);
@@ -14,7 +23,7 @@ export class AuthMiddleware {
             if (!user) {
                 return next(
                     new UnauthorizedError(
-                        'Sesión no válida o expirada. Inicie sesión nuevamente para continuar.'
+                        'Sesión no válida, revocada o expirada. Inicie sesión nuevamente para continuar.'
                     )
                 );
             }

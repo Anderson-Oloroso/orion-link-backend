@@ -4,6 +4,7 @@ import { JwtConfig } from './jwt.config.js';
 import { Database } from './database.config.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { UserDTO } from '../dtos/user.dto.js';
+import { TokenService } from '../services/token.service.js';
 
 const userRepository = new UserRepository(Database.getPool());
 
@@ -25,13 +26,20 @@ passport.use(
         {
             jwtFromRequest: dualCookieOrBearerExtractor,
             secretOrKey: JwtConfig.secret,
-            algorithms: ['HS256']
+            algorithms: ['HS256'],
+            passReqToCallback: true
         },
-        async (payload, done) => {
+        async (req, payload, done) => {
             try {
                 if (!payload || !payload.sub) {
                     return done(null, false);
                 }
+
+                const rawToken = TokenService.extractRawTokenFromRequest(req);
+                if (TokenService.isRevoked(rawToken, payload)) {
+                    return done(null, false);
+                }
+
                 const user = await userRepository.findActiveById(Number(payload.sub));
                 if (!user) {
                     return done(null, false);
