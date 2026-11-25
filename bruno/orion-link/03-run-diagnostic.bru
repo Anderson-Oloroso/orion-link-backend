@@ -1,0 +1,22 @@
+meta {
+  name: 03 - Run Remote Optical Diagnostic (dBm & Mass Outage Check)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/diagnostics/run
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "contractId": 3,
+    "simulatedRxDbm": -26.95
+  }
+}
