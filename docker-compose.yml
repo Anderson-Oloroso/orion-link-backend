@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: orion_link_mysql
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-orion_link_db}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-orion_secret_2026}
+    ports:
+      - "${DB_PUBLISHED_PORT:-3308}:${DB_PORT:-3306}"
+    command: --default-storage-engine=InnoDB --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${DB_PORT:-3306}
+    volumes:
+      - orion_mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 --port=\"$${DB_PORT:-3306}\" -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  backend:
+    build: .
+    container_name: orion_link_backend
+    restart: always
+    ports:
+      - "${PORT:-5000}:${PORT:-5000}"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+
+volumes:
+  orion_mysql_data:
