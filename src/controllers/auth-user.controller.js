@@ -34,12 +34,22 @@ export class AuthController extends BaseController {
         });
     }
 
-    async logout(_req, res) {
+    async logout(req, res) {
+        const rawToken = TokenService.extractRawTokenFromRequest(req);
+        if (rawToken) {
+            TokenService.revokeToken(rawToken);
+        }
+
+        const cookieOpts = JwtConfig.getCookieOptions();
         res.clearCookie(JwtConfig.cookieName, {
-            httpOnly: true,
-            path: '/'
+            httpOnly: cookieOpts.httpOnly,
+            secure: cookieOpts.secure,
+            sameSite: cookieOpts.sameSite,
+            path: cookieOpts.path
         });
-        return this.ok(res, null, 'Sesión cerrada correctamente y cookie HttpOnly invalidada.');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+        return this.ok(res, null, 'Sesión cerrada, token JWT revocado en servidor y cookie HttpOnly eliminada.');
     }
 
     async me(req, res) {
