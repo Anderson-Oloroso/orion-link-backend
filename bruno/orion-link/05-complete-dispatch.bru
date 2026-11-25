@@ -1,0 +1,23 @@
+meta {
+  name: 05 - Complete Crew Dispatch Order with Optical Certification
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/dispatches/1/complete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "restoredRxDbm": -18.90,
+    "fiberDropMeters": 25,
+    "fieldNotes": "Se reemplazó conector mecánico SC/APC y se retensó acometida drop en NAP-Z10-R01 Puerto 3. Potencia estabilizada en -18.90 dBm."
+  }
+}
