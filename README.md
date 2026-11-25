@@ -1,5 +1,9 @@
 # Orion Link — Backend (`orion-link-backend`)
 
+<p align="center">
+  <img src="./docs/assets/orion-link-brand-sheet.jpg" alt="Identidad Visual Oficial Orion Link (Modo Claro & Modo Noche NOC)" width="760">
+</p>
+
 API REST empresarial y motor de operaciones FTTH para **Orion Link**, un Sistema CRM de Soporte Técnico y Operaciones ISP que centraliza la atención al cliente suscriptor, el diagnóstico óptico remoto (`OLT → Caja NAP → ONU`), la detección temprana de fallas masivas en red de fibra óptica y el despacho de cuadrillas técnicas en campo.
 
 ---
