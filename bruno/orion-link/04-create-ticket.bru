@@ -1,0 +1,25 @@
+meta {
+  name: 04 - Create Support Ticket
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/tickets
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "contractId": 3,
+    "category": "high_attenuation",
+    "priority": "high",
+    "subject": "Atenuación óptica de -26.95 dBm en enlace corporativo Zona 10",
+    "description": "Se solicita despacho de cuadrilla para revisión de conector SC/APC en Caja NAP-Z10-R01."
+  }
+}
