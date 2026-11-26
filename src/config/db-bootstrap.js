@@ -54,11 +54,11 @@ export class DatabaseBootstrapper {
             const dbName = EnvConfig.db.database;
             const [tables] = await connection.query(
                 'SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
-                [dbName, 'users']
+                [dbName, 'dispatch_orders']
             );
 
-            const hasUsersTable = Number(tables[0]?.cnt || 0) > 0;
-            if (!hasUsersTable) {
+            const hasFullSchema = Number(tables[0]?.cnt || 0) > 0;
+            if (!hasFullSchema) {
                 Logger.info(`Inicializando esquema 3NF MySQL InnoDB en '${dbName}' desde database/ddl/01-schema.sql...`);
                 const schemaSql = await fs.readFile(path.join(DB_ROOT, 'ddl/01-schema.sql'), 'utf8');
                 for (const stmt of DatabaseBootstrapper.splitStandardSqlStatements(schemaSql)) {
