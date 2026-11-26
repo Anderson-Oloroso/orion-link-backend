@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_users_dpi_len CHECK (CHAR_LENGTH(dpi) = 13),
     CONSTRAINT chk_users_phone_len CHECK (CHAR_LENGTH(phone) = 8),
-    INDEX idx_users_role_active (role, is_active),
-    INDEX idx_users_dpi (dpi)
+    UNIQUE KEY uq_users_dpi (dpi),
+    INDEX idx_users_role_active (role, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -91,6 +91,11 @@ CREATE TABLE IF NOT EXISTS nap_boxes (
     CONSTRAINT fk_nap_boxes_olt
         FOREIGN KEY (id_olt) REFERENCES olts(id_olt)
         ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_nap_pon_port CHECK (pon_port_number >= 1),
+    CONSTRAINT chk_nap_splitter_ports CHECK (
+        (splitter_ratio = '1:8' AND total_ports = 8) OR
+        (splitter_ratio = '1:16' AND total_ports = 16)
+    ),
     CONSTRAINT chk_nap_ports_capacity CHECK (occupied_ports <= total_ports),
     INDEX idx_nap_boxes_olt_status (id_olt, status),
     INDEX idx_nap_boxes_sector (zone_sector)
@@ -246,6 +251,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
         FOREIGN KEY (id_last_diagnostic) REFERENCES remote_diagnostics(id_diagnostic)
         ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_tickets_status_priority (status, priority),
+    INDEX idx_tickets_contract_status (id_contract, status),
     INDEX idx_tickets_customer (id_customer, created_at DESC),
     INDEX idx_tickets_mass_outage (id_mass_outage)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -337,6 +343,7 @@ CREATE TABLE IF NOT EXISTS dispatch_orders (
     CONSTRAINT fk_dispatches_dispatcher
         FOREIGN KEY (dispatched_by) REFERENCES users(id_user)
         ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_dispatch_target CHECK (id_ticket IS NOT NULL OR id_mass_outage IS NOT NULL),
     INDEX idx_dispatches_crew_status (id_crew, status),
     INDEX idx_dispatches_ticket (id_ticket),
     INDEX idx_dispatches_outage (id_mass_outage)
