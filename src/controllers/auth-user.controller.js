@@ -84,4 +84,9 @@ export class UserController extends BaseController {
         const user = await this.service.deactivateUser(Number(req.params.id));
         return this.ok(res, user, 'Cuenta de usuario desactivada conservando historial.');
     }
+
+    async listPublicRolesDirectory(_req, res) {
+        const roles = await this.service.listPublicRolesDirectory();
+        return this.ok(res, roles, 'Perfiles activos por rol consultados en tiempo real desde MySQL InnoDB.');
+    }
 }

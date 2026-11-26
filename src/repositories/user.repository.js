@@ -79,4 +79,20 @@ export class UserRepository extends BaseRepository {
         await this.execute(sql, [id]);
         return await this.findById(id);
     }
+
+    async findRepresentativeByEachRole() {
+        const sql = `
+            SELECT u.id_user, u.first_name, u.last_name, u.email, u.role
+              FROM users u
+             INNER JOIN (
+                 SELECT role, MIN(id_user) AS min_id
+                   FROM users
+                  WHERE is_active = TRUE
+                  GROUP BY role
+             ) r ON u.id_user = r.min_id
+             ORDER BY FIELD(u.role, 'admin', 'support_agent', 'field_tech', 'customer')
+        `;
+        const [rows] = await this.execute(sql);
+        return rows;
+    }
 }
