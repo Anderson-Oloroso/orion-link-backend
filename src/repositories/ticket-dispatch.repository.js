@@ -169,7 +169,7 @@ export class DispatchRepository extends BaseRepository {
 
     static get BASE_JOIN_SQL() {
         return `
-            SELECT d.*,
+            SELECT DISTINCT d.*,
                    tc.crew_code,
                    tc.name AS crew_name,
                    tc.vehicle_plate,
