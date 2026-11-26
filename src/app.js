@@ -40,8 +40,9 @@ export class App {
                     const isLocalDev =
                         !EnvConfig.isProduction &&
                         (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin) || origin === 'null');
+                    const isNetlifyOrigin = /^https:\/\/[a-z0-9-]+(--[a-z0-9-]+)?\.netlify\.app$/i.test(origin);
 
-                    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin) || isLocalDev) {
+                    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin) || isLocalDev || isNetlifyOrigin) {
                         return callback(null, true);
                     }
                     return callback(new ForbiddenError(`Origen CORS no autorizado por Orion Link: ${origin}`));
