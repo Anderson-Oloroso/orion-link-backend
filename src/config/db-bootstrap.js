@@ -67,11 +67,13 @@ export class DatabaseBootstrapper {
             }
 
             const [userCountRows] = await connection.query('SELECT COUNT(*) AS cnt FROM users');
-            if (Number(userCountRows[0]?.cnt || 0) === 0) {
+            const [dispatchCountRows] = await connection.query('SELECT COUNT(*) AS cnt FROM dispatch_orders');
+            if (Number(userCountRows[0]?.cnt || 0) === 0 || Number(dispatchCountRows[0]?.cnt || 0) === 0) {
                 Logger.info(`Cargando datos iniciales en '${dbName}' desde database/dml/02-seeds.sql...`);
                 const seedsSql = await fs.readFile(path.join(DB_ROOT, 'dml/02-seeds.sql'), 'utf8');
                 for (const stmt of DatabaseBootstrapper.splitStandardSqlStatements(seedsSql)) {
-                    await connection.query(stmt);
+                    const safeStmt = stmt.replace(/^INSERT\s+INTO\s+/i, 'INSERT IGNORE INTO ');
+                    await connection.query(safeStmt);
                 }
             }
 
