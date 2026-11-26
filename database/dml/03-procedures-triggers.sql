@@ -135,6 +135,22 @@ BEGIN
 END $$
 
 -- ----------------------------------------------------------------------------
+-- TRIGGER 6: trg_before_insert_dispatch_order
+-- Garantiza la regla de arco en MySQL 8.0 (compatible con ON DELETE SET NULL):
+-- toda orden de despacho debe estar vinculada al menos a un ticket o falla masiva.
+-- ----------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_before_insert_dispatch_order $$
+CREATE TRIGGER trg_before_insert_dispatch_order
+BEFORE INSERT ON dispatch_orders
+FOR EACH ROW
+BEGIN
+    IF NEW.id_ticket IS NULL AND NEW.id_mass_outage IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Toda orden de despacho debe vincularse al menos a un ticket de soporte o a una falla masiva.';
+    END IF;
+END $$
+
+-- ----------------------------------------------------------------------------
 -- PROCEDIMIENTO 1: sp_run_remote_diagnostic
 -- Ejecuta o simula una lectura óptica determinista sobre un contrato FTTH,
 -- actualiza la telemetría de la ONU, guarda el diagnóstico en remote_diagnostics
