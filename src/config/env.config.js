@@ -21,11 +21,11 @@ export class EnvConfig {
 
     static get db() {
         return {
-            host: process.env.DB_HOST || '127.0.0.1',
-            port: Number(process.env.DB_PORT) || 3307,
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || 'orion_secret_2026',
-            database: process.env.DB_NAME || 'orion_link_db',
+            host: process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1',
+            port: Number(process.env.DB_PORT || process.env.MYSQLPORT) || 3307,
+            user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+            password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || 'orion_secret_2026',
+            database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'orion_link_db',
             connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10
         };
     }

@@ -4,6 +4,7 @@ import app from './app.js';
 import { serverPort, EnvConfig } from './config/env.config.js';
 import { apiPrefix } from './config/version.config.js';
 import { Database } from './config/database.config.js';
+import { DatabaseBootstrapper } from './config/db-bootstrap.js';
 import { Logger } from './utils/logger.js';
 
 export class Server {
@@ -24,6 +25,7 @@ export class Server {
     async connectDatabase() {
         try {
             await Database.checkConnection();
+            await DatabaseBootstrapper.ensureInitialized();
             Logger.info(`Pool MySQL 8.0 InnoDB conectado exitosamente a '${EnvConfig.db.database}' (${EnvConfig.db.host}:${EnvConfig.db.port})`);
         } catch (error) {
             Logger.error(`No se pudo conectar a MySQL InnoDB (${EnvConfig.db.host}:${EnvConfig.db.port}): ${error.message}`);
