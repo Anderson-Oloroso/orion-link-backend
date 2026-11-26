@@ -62,7 +62,64 @@ BEGIN
 END $$
 
 -- ----------------------------------------------------------------------------
--- TRIGGER 3: trg_after_delete_onu
+-- TRIGGER 3: trg_before_update_onu
+-- Valida capacidad física del splitter si una ONU se reasigna a otra Caja NAP
+-- o a otro puerto óptico dentro de la misma Caja NAP.
+-- ----------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_before_update_onu $$
+CREATE TRIGGER trg_before_update_onu
+BEFORE UPDATE ON onus
+FOR EACH ROW
+BEGIN
+    DECLARE v_total_ports TINYINT UNSIGNED;
+    DECLARE v_occupied_ports TINYINT UNSIGNED;
+
+    IF NEW.id_nap_box <> OLD.id_nap_box OR NEW.nap_port_number <> OLD.nap_port_number THEN
+        SELECT total_ports, occupied_ports
+          INTO v_total_ports, v_occupied_ports
+          FROM nap_boxes
+         WHERE id_nap_box = NEW.id_nap_box
+         FOR UPDATE;
+
+        IF NEW.nap_port_number < 1 OR NEW.nap_port_number > v_total_ports THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'El número de puerto supera la capacidad física de la Caja NAP.';
+        END IF;
+
+        IF NEW.id_nap_box <> OLD.id_nap_box AND v_occupied_ports >= v_total_ports THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'La Caja NAP destino ya tiene todos sus puertos ópticos ocupados.';
+        END IF;
+    END IF;
+END $$
+
+-- ----------------------------------------------------------------------------
+-- TRIGGER 4: trg_after_update_onu
+-- Recalcula automáticamente occupied_ports en la Caja NAP origen y destino
+-- cuando una ONU es trasladada de Caja NAP.
+-- ----------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_after_update_onu $$
+CREATE TRIGGER trg_after_update_onu
+AFTER UPDATE ON onus
+FOR EACH ROW
+BEGIN
+    IF NEW.id_nap_box <> OLD.id_nap_box THEN
+        UPDATE nap_boxes
+           SET occupied_ports = (
+               SELECT COUNT(*) FROM onus WHERE id_nap_box = OLD.id_nap_box
+           )
+         WHERE id_nap_box = OLD.id_nap_box;
+
+        UPDATE nap_boxes
+           SET occupied_ports = (
+               SELECT COUNT(*) FROM onus WHERE id_nap_box = NEW.id_nap_box
+           )
+         WHERE id_nap_box = NEW.id_nap_box;
+    END IF;
+END $$
+
+-- ----------------------------------------------------------------------------
+-- TRIGGER 5: trg_after_delete_onu
 -- Sincroniza el contador de puertos ocupados cuando se retira una ONU.
 -- ----------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS trg_after_delete_onu $$
@@ -135,8 +192,8 @@ BEGIN
         SET v_rx_dbm = p_simulated_rx_dbm;
     END IF;
 
-    -- 3. Evaluar reglas físicas de telemetría óptica GPON
-    IF v_rx_dbm >= -24.50 THEN
+    -- 3. Evaluar reglas físicas de telemetría óptica GPON (-14.00 a -25.00 dBm óptimo)
+    IF v_rx_dbm >= -25.00 THEN
         SET v_onu_status = 'online';
         SET v_optical_health = 'optimal';
         SET v_tx_dbm = 2.25;
@@ -182,6 +239,12 @@ BEGIN
     );
 
     SET v_new_diagnostic_id = LAST_INSERT_ID();
+
+    -- Vincular el diagnóstico recién ejecutado a los tickets activos de ese contrato
+    UPDATE support_tickets
+       SET id_last_diagnostic = v_new_diagnostic_id
+     WHERE id_contract = p_id_contract
+       AND status IN ('open', 'diagnosed', 'dispatched', 'in_progress');
 
     -- 6. Correlación temprana de Fallas Masivas en la Caja NAP
     SELECT COUNT(*)

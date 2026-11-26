@@ -107,3 +107,20 @@ INNER JOIN users ldr ON tc.leader_user_id = ldr.id_user
 LEFT JOIN support_tickets t ON d.id_ticket = t.id_ticket
 LEFT JOIN mass_outages mo ON d.id_mass_outage = mo.id_mass_outage
 ORDER BY d.created_at DESC;
+
+-- ----------------------------------------------------------------------------
+-- CONSULTA 5: Productividad de Cuadrillas y Metraje de Fibra Drop Utilizado
+-- ----------------------------------------------------------------------------
+SELECT 
+    tc.crew_code,
+    tc.name AS crew_name,
+    tc.specialty,
+    tc.status AS current_crew_status,
+    COUNT(d.id_dispatch) AS total_orders_assigned,
+    SUM(CASE WHEN d.status = 'resolved' THEN 1 ELSE 0 END) AS orders_certified_resolved,
+    COALESCE(SUM(d.fiber_drop_meters), 0) AS total_fiber_drop_meters_used,
+    ROUND(AVG(d.restored_rx_dbm), 2) AS avg_certified_rx_dbm
+FROM technical_crews tc
+LEFT JOIN dispatch_orders d ON tc.id_crew = d.id_crew
+GROUP BY tc.id_crew
+ORDER BY orders_certified_resolved DESC, total_orders_assigned DESC;

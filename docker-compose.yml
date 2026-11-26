@@ -13,7 +13,9 @@ services:
     command: --default-storage-engine=InnoDB --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${DB_PORT:-3306}
     volumes:
       - orion_mysql_data:/var/lib/mysql
-      - ./database:/docker-entrypoint-initdb.d/
+      - ./database/ddl/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/dml/02-seeds.sql:/docker-entrypoint-initdb.d/02-seeds.sql:ro
+      - ./database/dml/03-procedures-triggers.sql:/docker-entrypoint-initdb.d/03-procedures-triggers.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 --port=\"$${DB_PORT:-3306}\" -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 5s
