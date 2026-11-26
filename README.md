@@ -6,12 +6,12 @@
 
 API REST empresarial y motor de operaciones FTTH para **Orion Link**, un Sistema CRM de Soporte Técnico y Operaciones ISP que centraliza la atención al cliente suscriptor, el diagnóstico óptico remoto (`OLT → Caja NAP → ONU`), la detección temprana de fallas masivas en red de fibra óptica y el despacho de cuadrillas técnicas en campo.
 
-## Ecosistema de Repositorios Hermanos (`Orion Link`)
+## Ecosistema de Repositorios Hermanos y Despliegues en Producción (`Orion Link`)
 
-| Repositorio | Rol en la Arquitectura | Enlace Oficial en GitHub |
+| Componente | Plataforma Cloud / URL en Vivo | Enlace Oficial en GitHub |
 |---|---|---|
-| **`orion-link-backend`** *(este repositorio)* | API RESTful 100% OOP (Node.js 20+ ESM, Express 5), Seguridad JWT Dual (`HttpOnly` + Bearer con revocación `jti`), MySQL 8.0 (`InnoDB`), Triggers, Stored Procedures, Docker Compose, Swagger y Bruno. | [github.com/Anderson-Oloroso/orion-link-backend](https://github.com/Anderson-Oloroso/orion-link-backend) |
-| **`orion-link-frontend`** *(repositorio hermano)* | Interfaz web multipágina desacoplada (HTML5 semántico, CSS3 Bitema Claro / Modo Noche NOC y Vanilla JS ES Modules 100% OOP) con 4 espacios de trabajo polimórficos por rol. | [github.com/Anderson-Oloroso/orion-link-frontend](https://github.com/Anderson-Oloroso/orion-link-frontend) |
+| **`orion-link-backend`** *(este repositorio)* | **Railway (Node.js 20+ + MySQL 8.0 InnoDB):** [`https://orion-link-backend-production.up.railway.app/api/v1/health`](https://orion-link-backend-production.up.railway.app/api/v1/health) · **Swagger UI:** [`/api-docs`](https://orion-link-backend-production.up.railway.app/api-docs) | [github.com/Anderson-Oloroso/orion-link-backend](https://github.com/Anderson-Oloroso/orion-link-backend) |
+| **`orion-link-frontend`** *(repositorio hermano)* | **Netlify (HTML5, CSS3 Bitema & Vanilla JS OOP Multipágina):** [`https://orion-link-frontend.netlify.app`](https://orion-link-frontend.netlify.app) | [github.com/Anderson-Oloroso/orion-link-frontend](https://github.com/Anderson-Oloroso/orion-link-frontend) |
 
 ---
 
