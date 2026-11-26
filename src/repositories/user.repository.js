@@ -82,7 +82,7 @@ export class UserRepository extends BaseRepository {
 
     async findRepresentativeByEachRole() {
         const sql = `
-            SELECT u.id_user, u.first_name, u.last_name, u.email, u.role
+            SELECT u.id_user, u.dpi, u.first_name, u.last_name, u.phone, u.email, u.role, u.is_active, u.created_at
               FROM users u
              INNER JOIN (
                  SELECT role, MIN(id_user) AS min_id
