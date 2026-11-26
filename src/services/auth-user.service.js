@@ -4,8 +4,6 @@ import { UserDTO } from '../dtos/user.dto.js';
 import { ConflictError, UnauthorizedError } from '../utils/app-error.js';
 
 export class AuthService extends BaseService {
-    static DEMO_PASSWORDS = new Set(['password', '@Orion_2026', '@Orion_Admin/2026', '@User/809--']);
-
     constructor(userRepository) {
         super(userRepository, UserDTO);
     }
@@ -45,11 +43,6 @@ export class AuthService extends BaseService {
             isValid = await bcrypt.compare(password, user.password_hash);
         } catch {
             isValid = false;
-        }
-
-        // Soporte conveniente para las contraseñas documentadas en los seeds de desarrollo
-        if (!isValid && AuthService.DEMO_PASSWORDS.has(password)) {
-            isValid = true;
         }
 
         if (!isValid) {
@@ -97,5 +90,10 @@ export class UserService extends BaseService {
         await this.repository.findByIdOrFail(id, 'Usuario');
         const deactivated = await this.repository.deactivate(id);
         return this.toDTO(deactivated);
+    }
+
+    async listPublicRolesDirectory() {
+        const rows = await this.repository.findRepresentativeByEachRole();
+        return this.toDTOList(rows);
     }
 }

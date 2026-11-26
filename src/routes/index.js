@@ -57,6 +57,7 @@ const opsController = new OperationsController({
 const apiRouter = Router();
 
 // --- AUTH & SESSION (Público + JWT Cookie/Bearer) ---
+apiRouter.get('/auth/roles-directory', userController.handle('listPublicRolesDirectory'));
 apiRouter.post('/auth/register', RateLimitMiddleware.authLimiter(), AuthValidator.register(), authController.handle('register'));
 apiRouter.post('/auth/login', RateLimitMiddleware.authLimiter(), AuthValidator.login(), authController.handle('login'));
 apiRouter.post('/auth/logout', authController.handle('logout'));
