@@ -343,7 +343,6 @@ CREATE TABLE IF NOT EXISTS dispatch_orders (
     CONSTRAINT fk_dispatches_dispatcher
         FOREIGN KEY (dispatched_by) REFERENCES users(id_user)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT chk_dispatch_target CHECK (id_ticket IS NOT NULL OR id_mass_outage IS NOT NULL),
     INDEX idx_dispatches_crew_status (id_crew, status),
     INDEX idx_dispatches_ticket (id_ticket),
     INDEX idx_dispatches_outage (id_mass_outage)
