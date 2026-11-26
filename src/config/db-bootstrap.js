@@ -29,7 +29,7 @@ export class DatabaseBootstrapper {
             .join('\n');
 
         return cleaned
-            .split(';')
+            .split(/;\s*(?:\r?\n|$)/)
             .map((stmt) => stmt.trim())
             .filter(Boolean);
     }
